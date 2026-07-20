@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -5,489 +6,727 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>AI Keyboard</title>
 <style>
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body {
-    margin: 0; padding: 0; height: 100%;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: #0b141a;
-    overflow: hidden;
+  /* ==================== Базовые стили и тема ==================== */
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --key: #262b36;
+    --key-active: #323847;
+    --key-special: #1f2530;
+    --accent: #4f8cff;
+    --accent-2: #2f6fe0;
+    --punct: #3a2f4d;      /* фон для знаков препинания */
+    --punct-active: #6b4fa0;
+    --text: #e8ebf0;
+    --text-dim: #8a93a6;
+    --danger: #ff6b6b;
+    --radius: 14px;
+    --kb-height: 320px;
   }
-  .phone {
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0; padding: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    overscroll-behavior: none;
+  }
+
+  /* Контейнер под мобильную ширину, работает и на десктопе */
+  .app {
     max-width: 440px;
     margin: 0 auto;
     height: 100vh;
     height: 100dvh;
     display: flex;
     flex-direction: column;
-    background: #0b141a;
+    background: var(--bg);
     position: relative;
   }
 
-  /* Header */
+  /* ==================== Шапка ==================== */
   .header {
-    background: #202c33;
-    color: #e9edef;
-    padding: 12px 16px;
+    padding: 14px 16px 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  .header h1 {
+    font-size: 15px;
+    margin: 0;
+    color: var(--text-dim);
+    font-weight: 600;
     display: flex;
     align-items: center;
-    gap: 12px;
-    font-size: 16px;
-    border-bottom: 1px solid #2a3942;
+    gap: 8px;
   }
-  .avatar {
-    width: 36px; height: 36px; border-radius: 50%;
-    background: linear-gradient(135deg,#00a884,#0088cc);
-    display:flex;align-items:center;justify-content:center;
-    font-size: 18px;
+  .header h1 .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
   }
-  .header .name { font-weight: 600; }
-  .header .status { font-size: 12px; color:#8696a0; }
 
-  /* Chat area */
-  .chat {
+  /* ==================== Область сообщений ==================== */
+  .messages {
     flex: 1;
     overflow-y: auto;
     padding: 16px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    background-image: linear-gradient(rgba(11,20,26,.95),rgba(11,20,26,.95));
+    gap: 10px;
   }
-  .bubble {
-    max-width: 75%;
-    padding: 8px 12px;
-    border-radius: 10px;
-    font-size: 15px;
-    line-height: 1.35;
-    word-wrap: break-word;
-  }
-  .bubble.me {
+  .msg {
     align-self: flex-end;
-    background: #005c4b;
-    color: #e9edef;
-    border-bottom-right-radius: 2px;
+    background: var(--accent);
+    color: #fff;
+    padding: 10px 14px;
+    border-radius: 18px 18px 4px 18px;
+    max-width: 80%;
+    word-break: break-word;
+    animation: pop .18s ease;
+    line-height: 1.35;
   }
-  .bubble.them {
-    align-self: flex-start;
-    background: #202c33;
-    color: #e9edef;
-    border-bottom-left-radius: 2px;
+  @keyframes pop { from { transform: scale(.9); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+  .hint {
+    align-self: center;
+    color: var(--text-dim);
+    font-size: 13px;
+    text-align: center;
+    max-width: 90%;
+    line-height: 1.4;
   }
 
-  /* Input row */
+  /* ==================== Поле ввода (как в мессенджере) ==================== */
   .inputbar {
     display: flex;
     align-items: flex-end;
     gap: 8px;
-    padding: 8px 10px;
-    background: #0b141a;
+    padding: 10px 12px;
+    background: var(--panel);
+    border-top: 1px solid rgba(255,255,255,0.06);
   }
-  .inputwrap {
+  .input-field {
     flex: 1;
-    background: #2a3942;
-    border-radius: 22px;
-    padding: 10px 14px;
-    min-height: 44px;
-    color: #e9edef;
+    min-height: 42px;
+    max-height: 120px;
+    overflow-y: auto;
+    background: var(--key);
+    border-radius: 21px;
+    padding: 10px 16px;
     font-size: 16px;
-    line-height: 1.3;
-    display: flex;
-    align-items: center;
-    overflow-x: auto;
-    white-space: nowrap;
+    line-height: 1.35;
+    outline: none;
+    border: 1px solid transparent;
+    white-space: pre-wrap;
+    word-break: break-word;
   }
-  .inputwrap .cursor {
-    display:inline-block;width:2px;height:20px;background:#00a884;
-    animation: blink 1s steps(1) infinite; margin-left:1px;
+  .input-field:focus { border-color: var(--accent); }
+  .input-field:empty:before {
+    content: attr(data-placeholder);
+    color: var(--text-dim);
   }
-  @keyframes blink { 50% { opacity: 0; } }
-  .placeholder { color:#8696a0; }
-  .sendbtn {
-    width: 44px; height: 44px; border-radius: 50%;
-    background: #00a884; border: none; color: white;
-    font-size: 20px; cursor: pointer; flex-shrink: 0;
+  .send-btn {
+    flex-shrink: 0;
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .15s, transform .1s;
   }
+  .send-btn:active { transform: scale(.92); }
+  .send-btn:disabled { background: var(--key); color: var(--text-dim); cursor: default; }
 
-  /* Keyboard */
+  /* ==================== Клавиатура ==================== */
   .keyboard {
-    background: #1c2b33;
-    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+    height: var(--kb-height);
+    background: var(--panel);
+    padding: 8px 6px calc(8px + env(safe-area-inset-bottom, 0px));
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border-top: 1px solid rgba(255,255,255,0.06);
     user-select: none;
   }
-  .kb-status {
-    display:flex; align-items:center; justify-content:space-between;
-    padding: 2px 8px 6px; font-size: 11px; color:#8696a0;
-    min-height: 18px;
-  }
-  .kb-status .mode { color:#00a884; font-weight:600; }
-  .kb-status .loader {
-    display:flex; align-items:center; gap:5px; color:#8696a0;
-  }
-  .dot-spin {
-    width:10px;height:10px;border:2px solid #3a4a52;border-top-color:#00a884;
-    border-radius:50%;animation:spin .7s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg);} }
 
+  /* Строка статуса режима */
+  .kb-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4px 2px;
+    font-size: 11px;
+    color: var(--text-dim);
+    height: 16px;
+  }
+  .kb-status .status-txt { display: flex; align-items: center; gap: 6px; }
+  .spinner {
+    width: 11px; height: 11px;
+    border: 2px solid rgba(255,255,255,0.2);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg) } }
+
+  /* Ряды букв */
   .kb-row {
     display: flex;
     gap: 5px;
-    margin-bottom: 6px;
+    flex: 1;
     justify-content: center;
   }
   .key {
     flex: 1;
-    min-width: 0;
-    height: 42px;
-    background: #3b4a54;
+    background: var(--key);
     border: none;
-    border-radius: 6px;
-    color: #e9edef;
-    font-size: 17px;
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 18px;
     cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background .08s;
-    padding: 0 2px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .1s, transform .05s;
+    min-width: 0;
+    padding: 0;
   }
-  .key:active { background: #55666f; }
-  .key.wide { flex: 1.6; }
-  .key.fn { background: #2a3942; font-size: 14px; }
+  .key:active { background: var(--key-active); transform: translateY(1px); }
+  .key.special {
+    background: var(--key-special);
+    font-size: 13px;
+    color: var(--text-dim);
+    flex: 1.3;
+  }
+  .key.wide { flex: 3; }
+  .key.accent { background: var(--accent-2); color:#fff; flex:1.5; }
 
-  /* Word keys */
+  /* ==================== Режим слов ==================== */
+  .words-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow: hidden;
+  }
   .words-grid {
+    flex: 1;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 5px;
-    margin-bottom: 6px;
+    gap: 6px;
+    align-content: stretch;
+    overflow-y: auto;
   }
-  .wordkey {
-    background: #2a3942;
-    border: 1px solid #3b4a54;
-    border-radius: 8px;
-    color: #e9edef;
-    font-size: 14px;
-    padding: 11px 4px;
+  .chip {
+    background: var(--key);
+    border: none;
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 15px;
+    min-height: 44px;
     cursor: pointer;
+    padding: 4px 6px;
+    display: flex; align-items: center; justify-content: center;
     text-align: center;
+    transition: background .1s, transform .05s;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    transition: background .1s;
   }
-  .wordkey:active { background: #005c4b; }
-  .wordkey.skeleton {
-    background: #24333b;
-    color: transparent;
-    position: relative;
-    overflow: hidden;
-    border-color:#24333b;
+  .chip:active { background: var(--accent); color:#fff; transform: scale(.96); }
+  /* Отдельный стиль для чипов-знаков препинания */
+  .chip.punct {
+    background: var(--punct);
+    font-size: 20px;
+    font-weight: 600;
+    flex: 0;
   }
-  .wordkey.skeleton::after {
-    content:"";position:absolute;inset:0;
-    background:linear-gradient(90deg,transparent,#33454e,transparent);
+  .chip.punct:active { background: var(--punct-active); color:#fff; }
+  .chip.skeleton {
+    background: linear-gradient(90deg, var(--key) 25%, var(--key-active) 50%, var(--key) 75%);
+    background-size: 200% 100%;
     animation: shimmer 1.2s infinite;
+    color: transparent;
+    pointer-events: none;
   }
-  @keyframes shimmer { 100% { transform: translateX(100%);} 0%{transform:translateX(-100%);} }
+  @keyframes shimmer { to { background-position: -200% 0 } }
 
-  .kb-actions {
-    display:flex; gap:5px;
-  }
-  .kb-actions .key { height: 40px; }
+  /* Нижний ряд служебных кнопок в режиме слов */
+  .words-controls { display: flex; gap: 5px; height: 46px; }
 
-  /* API modal */
-  .modal {
-    position: absolute; inset: 0;
-    background: rgba(0,0,0,.7);
-    display: flex; align-items: center; justify-content: center;
-    padding: 24px; z-index: 100;
+  .toast {
+    position: absolute;
+    bottom: calc(var(--kb-height) + 12px);
+    left: 50%; transform: translateX(-50%);
+    background: var(--danger);
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    max-width: 90%;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,.4);
+    opacity: 0;
+    transition: opacity .25s;
+    pointer-events: none;
+    z-index: 10;
   }
-  .modal.hidden { display:none; }
-  .modal-box {
-    background: #202c33; border-radius: 14px; padding: 22px;
-    width: 100%; color:#e9edef;
-  }
-  .modal-box h3 { margin: 0 0 6px; }
-  .modal-box p { color:#8696a0; font-size:13px; margin: 0 0 16px; }
-  .modal-box input {
-    width: 100%; padding: 12px; border-radius: 8px;
-    border: 1px solid #3b4a54; background:#0b141a; color:#e9edef;
-    font-size: 14px; margin-bottom: 14px;
-  }
-  .modal-box button {
-    width: 100%; padding: 12px; border-radius: 8px; border:none;
-    background:#00a884; color:white; font-size:15px; font-weight:600;
-    cursor:pointer;
-  }
-  .gear {
-    margin-left:auto; cursor:pointer; color:#8696a0; font-size:20px;
-    background:none;border:none;
-  }
+  .toast.show { opacity: 1; }
 </style>
 </head>
 <body>
-<div class="phone">
-
+<div class="app">
+  <!-- Шапка -->
   <div class="header">
-    <div class="avatar">🤖</div>
-    <div>
-      <div class="name">AI Keyboard</div>
-      <div class="status">клавиатура из слов</div>
-    </div>
-    <button class="gear" onclick="openModal()">⚙</button>
+    <h1><span class="dot"></span> AI Keyboard — набор словами</h1>
   </div>
 
-  <div class="chat" id="chat">
-    <div class="bubble them">Привет! Попробуй набрать сообщение. После первого слова буквы превратятся в слова 👇</div>
+  <!-- Лента сообщений -->
+  <div class="messages" id="messages">
+    <div class="hint">Наберите первое слово по буквам и нажмите «Пробел» — дальше клавиатура предложит готовые слова и знаки препинания 🤖</div>
   </div>
 
+  <!-- Поле ввода -->
   <div class="inputbar">
-    <div class="inputwrap" id="inputwrap">
-      <span class="placeholder" id="placeholder">Сообщение</span>
-      <span id="typed"></span><span class="cursor"></span>
-    </div>
-    <button class="sendbtn" onclick="sendMessage()">➤</button>
+    <div class="input-field" id="input" contenteditable="true" data-placeholder="Сообщение..."></div>
+    <button class="send-btn" id="sendBtn" title="Отправить">➤</button>
   </div>
 
+  <!-- Клавиатура -->
   <div class="keyboard" id="keyboard">
     <div class="kb-status">
-      <span class="mode" id="mode">режим: буквы</span>
-      <span class="loader" id="loader" style="visibility:hidden"><span class="dot-spin"></span>AI думает…</span>
+      <span class="status-txt" id="statusTxt">Режим: буквы</span>
+      <span id="statusRight"></span>
     </div>
-    <div id="kb-body"></div>
+    <!-- Сюда динамически вставляется контент -->
+    <div id="kbBody" style="flex:1;display:flex;flex-direction:column;gap:6px;overflow:hidden;"></div>
   </div>
 
-  <!-- API key modal -->
-  <div class="modal" id="modal">
-    <div class="modal-box">
-      <h3>DeepSeek API ключ</h3>
-      <p>Ключ хранится только в твоём браузере (localStorage). Получить: platform.deepseek.com</p>
-      <input type="password" id="apikey" placeholder="sk-...">
-      <button onclick="saveKey()">Сохранить</button>
-    </div>
-  </div>
-
+  <div class="toast" id="toast"></div>
 </div>
 
 <script>
-// ---------- State ----------
-let text = "";                 // текущий текст в инпуте
-let mode = "letters";          // letters | words
-let apiKey = localStorage.getItem("deepseek_key") || "";
-let shift = true;              // капитализация первой буквы
-let loadingWords = false;
+/* ============================================================
+   AI-FIRST KEYBOARD — прототип (с поддержкой пунктуации)
+   ============================================================ */
 
-const qwerty = [
+/* ⬇️⬇️⬇️ ВСТАВЬТЕ СЮДА ВАШ КЛЮЧ DeepSeek ⬇️⬇️⬇️ */
+const DEEPSEEK_API_KEY = "sk-5e015ac8a9a6473da729035363b622fc"; // например "sk-xxxxxxxxxxxxxxxx"
+/* ⬆️⬆️⬆️ ------------------------------------- ⬆️⬆️⬆️ */
+
+const DEEPSEEK_ENDPOINT = "https://api.deepseek.com/chat/completions";
+
+/* Раскладка QWERTY (русская) */
+const LAYOUT = [
   ["й","ц","у","к","е","н","г","ш","щ","з","х"],
   ["ф","ы","в","а","п","р","о","л","д","ж","э"],
   ["я","ч","с","м","и","т","ь","б","ю"]
 ];
 
-// ---------- Init ----------
-if (!apiKey) openModal();
-render();
+/* Fallback-набор — теперь включает и слова, и знаки препинания */
+const FALLBACK_WORDS = [
+  "и","в","не",",","что","как",".","это","!","с","?","очень"
+];
 
-// ---------- API modal ----------
-function openModal(){ document.getElementById("modal").classList.remove("hidden"); document.getElementById("apikey").value = apiKey; }
-function saveKey(){
-  apiKey = document.getElementById("apikey").value.trim();
-  localStorage.setItem("deepseek_key", apiKey);
-  document.getElementById("modal").classList.add("hidden");
-}
+/* Набор допустимых «пунктуационных токенов».
+   Используется и для распознавания, и для правил вставки. */
+const PUNCTUATION = new Set([
+  ",", ".", "!", "?", "…", "...", ":", ";", "—", "-", ")", "(",
+  "?!", "!?", "»", "«"
+]);
 
-// ---------- Input rendering ----------
-function updateInput(){
-  const ph = document.getElementById("placeholder");
-  const typed = document.getElementById("typed");
-  typed.textContent = text;
-  ph.style.display = text.length ? "none" : "inline";
-  // авто-скролл инпута
-  const w = document.getElementById("inputwrap");
-  w.scrollLeft = w.scrollWidth;
-}
+// Знаки, которые «прилипают» к предыдущему слову (без пробела перед ними)
+const ATTACH_LEFT = new Set([",", ".", "!", "?", "…", "...", ":", ";", "?!", "!?", ")", "»"]);
 
-// ---------- Determine mode ----------
-function recomputeMode(){
-  // Режим "слова" включается, когда есть хотя бы одно завершённое слово (текст заканчивается пробелом)
-  // либо когда уже начат режим слов
-  const trimmed = text.trimEnd();
-  const hasWord = trimmed.split(/\s+/).filter(Boolean).length >= 1;
-  const endsWithSpace = text.length > 0 && text.endsWith(" ");
-  if (hasWord && endsWithSpace) {
-    if (mode !== "words") { mode = "words"; fetchWords(); }
-  }
-}
+/* ==================== Состояние ==================== */
+let mode = "abc";          // "abc" | "words"
+let isLoading = false;     // идёт ли запрос
+let debounceTimer = null;  // таймер debounce
+let lastRequestId = 0;     // для отмены устаревших ответов
 
-// ---------- Key handlers ----------
-function typeLetter(ch){
-  if (shift && mode==="letters") { ch = ch.toUpperCase(); shift=false; }
-  text += ch;
-  updateInput(); render();
-}
-function typeSpace(){
-  if (text.length===0 || text.endsWith(" ")) return;
-  text += " ";
-  updateInput();
-  recomputeMode();
-  render();
-}
-function backspace(){
-  text = text.slice(0,-1);
-  if (text.length===0) { mode="letters"; shift=true; }
-  updateInput(); render();
-}
-function typeWord(word){
-  if (word==="") return;
-  // добавляем слово + пробел
-  if (text.length && !text.endsWith(" ")) text += " ";
-  text += word + " ";
-  updateInput();
-  fetchWords(); // сразу новые предсказания
-  render();
-}
-function switchToLetters(){ mode="letters"; render(); }
+/* ==================== DOM ==================== */
+const inputEl   = document.getElementById("input");
+const kbBody    = document.getElementById("kbBody");
+const statusTxt = document.getElementById("statusTxt");
+const statusRight = document.getElementById("statusRight");
+const messagesEl = document.getElementById("messages");
+const sendBtn   = document.getElementById("sendBtn");
+const toastEl   = document.getElementById("toast");
 
-function sendMessage(){
-  const t = text.trim();
-  if (!t) return;
-  const chat = document.getElementById("chat");
-  const b = document.createElement("div");
-  b.className = "bubble me";
-  b.textContent = t;
-  chat.appendChild(b);
-  chat.scrollTop = chat.scrollHeight;
-  text = ""; mode="letters"; shift=true;
-  updateInput(); render();
+/* ==================== Утилиты работы с текстом ==================== */
+
+// Проверка: является ли токен знаком препинания
+function isPunct(token) {
+  return PUNCTUATION.has(token);
 }
 
-// ---------- Render keyboard ----------
-function render(){
-  document.getElementById("mode").textContent =
-    mode==="words" ? "режим: слова (AI)" : "режим: буквы";
-  const body = document.getElementById("kb-body");
-  body.innerHTML = "";
-
-  if (mode === "letters"){
-    renderQwerty(body);
-  } else {
-    renderWords(body);
-  }
+// Возвращает текущий текст input
+function getText() {
+  return inputEl.textContent || "";
 }
 
-function renderQwerty(body){
-  qwerty.forEach((row,i)=>{
-    const r = document.createElement("div");
-    r.className="kb-row";
-    if(i===2){
-      const sh=makeKey(shift?"⇧":"⇧","fn wide", ()=>{shift=!shift;render();});
-      r.appendChild(sh);
-    }
-    row.forEach(ch=>{
-      const label = shift ? ch.toUpperCase() : ch;
-      r.appendChild(makeKey(label,"", ()=>typeLetter(ch)));
+// Устанавливает текст и ставит курсор в конец
+function setText(txt) {
+  inputEl.textContent = txt;
+  placeCaretAtEnd(inputEl);
+  updateSendBtn();
+}
+
+// Ставим курсор в конец contenteditable
+function placeCaretAtEnd(el) {
+  el.focus();
+  const range = document.createRange();
+  range.selectNodeContents(el);
+  range.collapse(false);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+}
+
+// Активна ли кнопка отправки
+function updateSendBtn() {
+  sendBtn.disabled = getText().trim().length === 0;
+}
+
+/* ==================== Рендер клавиатуры ==================== */
+
+// Главный роутер отрисовки
+function renderKeyboard() {
+  if (mode === "abc") renderAbc();
+  else renderWords();
+}
+
+// --- Режим букв (QWERTY) ---
+function renderAbc() {
+  statusTxt.textContent = "Режим: буквы";
+  statusRight.innerHTML = "";
+  kbBody.innerHTML = "";
+
+  // Буквенные ряды
+  LAYOUT.forEach(row => {
+    const rowEl = document.createElement("div");
+    rowEl.className = "kb-row";
+    row.forEach(ch => {
+      const btn = document.createElement("button");
+      btn.className = "key";
+      btn.textContent = ch;
+      btn.onclick = () => onLetter(ch);
+      rowEl.appendChild(btn);
     });
-    if(i===2){
-      r.appendChild(makeKey("⌫","fn wide", backspace));
-    }
-    body.appendChild(r);
+    kbBody.appendChild(rowEl);
   });
-  // bottom row
-  const r = document.createElement("div");
-  r.className="kb-row";
-  r.appendChild(makeKey("123","fn", ()=>{}));
-  r.appendChild(makeKey("пробел","wide", typeSpace));
-  const sp = r.lastChild; sp.style.flex="4";
-  r.appendChild(makeKey("↵","fn", sendMessage));
-  body.appendChild(r);
+
+  // Нижний служебный ряд
+  const ctrl = document.createElement("div");
+  ctrl.className = "kb-row";
+  ctrl.appendChild(makeKey("Слова", "key special", switchToWords));
+  ctrl.appendChild(makeKey("⌫", "key special", onBackspace));
+  ctrl.appendChild(makeKey("Пробел", "key wide", onSpace));
+  ctrl.appendChild(makeKey("Ввод", "key accent", onEnter));
+  kbBody.appendChild(ctrl);
 }
 
-function makeKey(label,cls,onclick){
-  const b=document.createElement("button");
-  b.className="key "+cls;
-  b.textContent=label;
-  b.onclick=onclick;
+// --- Режим слов ---
+function renderWords(words) {
+  statusTxt.innerHTML = isLoading
+    ? '<span class="spinner"></span> LLM подбирает слова...'
+    : "Режим: слова";
+  kbBody.innerHTML = "";
+
+  const wrap = document.createElement("div");
+  wrap.className = "words-wrap";
+
+  const grid = document.createElement("div");
+  grid.className = "words-grid";
+
+  if (isLoading || !words) {
+    // Skeleton-заглушки
+    for (let i = 0; i < 12; i++) {
+      const s = document.createElement("div");
+      s.className = "chip skeleton";
+      s.textContent = "···";
+      grid.appendChild(s);
+    }
+  } else {
+    // Реальные кандидаты (максимум 12, обрезаем длинные)
+    words.slice(0, 12).forEach(w => {
+      const chip = document.createElement("button");
+      // Помечаем знаки препинания отдельным классом .punct
+      const punct = isPunct(w);
+      chip.className = punct ? "chip punct" : "chip";
+      const shown = w.length > 14 ? w.slice(0, 13) + "…" : w;
+      chip.textContent = shown;
+      chip.title = w;
+      chip.onclick = () => onWord(w);
+      grid.appendChild(chip);
+    });
+  }
+  wrap.appendChild(grid);
+
+  // Служебные кнопки внизу
+  const ctrl = document.createElement("div");
+  ctrl.className = "words-controls";
+  ctrl.appendChild(makeKey("ABC", "key special", switchToAbc));
+  ctrl.appendChild(makeKey("⌫", "key special", onBackspace));
+  ctrl.appendChild(makeKey("Пробел", "key wide", onSpace));
+  ctrl.appendChild(makeKey("Ввод", "key accent", onEnter));
+  wrap.appendChild(ctrl);
+
+  kbBody.appendChild(wrap);
+}
+
+// Хелпер создания кнопки
+function makeKey(label, cls, handler) {
+  const b = document.createElement("button");
+  b.className = cls;
+  b.textContent = label;
+  b.onclick = handler;
   return b;
 }
 
-let currentWords = [];
-function renderWords(body){
-  const grid=document.createElement("div");
-  grid.className="words-grid";
-  const items = loadingWords ? new Array(12).fill(null) : currentWords;
-  (items.length?items:new Array(12).fill(null)).forEach(w=>{
-    const b=document.createElement("div");
-    if(w===null){
-      b.className="wordkey skeleton";
-      b.textContent="...";
-    } else {
-      b.className="wordkey";
-      b.textContent=w;
-      b.onclick=()=>typeWord(w);
-    }
-    grid.appendChild(b);
-  });
-  body.appendChild(grid);
+/* ==================== Обработчики ввода ==================== */
 
-  // action row
-  const r=document.createElement("div");
-  r.className="kb-actions";
-  r.appendChild(makeKey("⌨ буквы","fn wide", switchToLetters));
-  r.appendChild(makeKey("⌫","fn", backspace));
-  r.appendChild(makeKey("␣","fn", typeSpace));
-  r.appendChild(makeKey("↵ отпр","fn wide", sendMessage));
-  body.appendChild(r);
+function onLetter(ch) {
+  setText(getText() + ch);
 }
 
-// ---------- DeepSeek prediction ----------
-async function fetchWords(){
-  if(!apiKey){ openModal(); return; }
-  loadingWords = true;
-  document.getElementById("loader").style.visibility="visible";
-  render();
+function onBackspace() {
+  const t = getText();
+  setText(t.slice(0, -1));
+  // Если стёрли всё в режиме слов — обновим предсказания
+  if (mode === "words") requestWords();
+}
 
-  const context = text.trim();
-  const prompt =
-`Ты — предиктивная клавиатура. Пользователь пишет сообщение на русском.
-Текущий текст: "${context}"
-Предложи РОВНО 12 наиболее вероятных следующих слов, которые пользователь захочет напечатать дальше.
-Слова должны быть разнообразными по смыслу (чтобы покрыть разные намерения), короткими, готовыми к вставке.
-Учитывай грамматику и естественное продолжение фразы.
-Ответь ТОЛЬКО валидным JSON-массивом из 12 строк, без пояснений. Пример: ["привет","как","дела","что","ты","сегодня","хочу","мне","очень","это","было","спасибо"]`;
+// Пробел — ключевое действие: переключает в режим слов
+function onSpace() {
+  const t = getText();
+  if (t.length === 0 || t.endsWith(" ")) return; // не плодим пробелы
+  setText(t + " ");
+  switchToWords();
+}
 
-  try{
-    const res = await fetch("https://api.deepseek.com/chat/completions",{
-      method:"POST",
-      headers:{
-        "Content-Type":"application/json",
-        "Authorization":"Bearer "+apiKey
+function onEnter() {
+  sendMessage();
+}
+
+/* Клик по предложенному токену (слову ИЛИ знаку препинания).
+   Логика вставки:
+   - знак препинания, «прилипающий влево» (, . ! ? …) — приклеиваем
+     к предыдущему слову без пробела, затем ставим пробел;
+   - открывающая скобка/кавычка «(» «»« — ставим с пробелом перед,
+     но без пробела после (упрощённо оставляем пробел);
+   - обычное слово — добавляем с пробелом-разделителем. */
+function onWord(token) {
+  let t = getText();
+
+  if (isPunct(token) && ATTACH_LEFT.has(token)) {
+    // Убираем висящий пробел перед знаком, если он есть
+    t = t.replace(/\s+$/, "");
+    setText(t + token + " ");
+  } else {
+    // Обычное слово или "открывающий" знак — с пробелом-разделителем
+    const base = (t.endsWith(" ") || t.length === 0) ? t : t + " ";
+    setText(base + token + " ");
+  }
+
+  requestWords(); // сразу просим следующий набор
+}
+
+/* ==================== Переключение режимов ==================== */
+
+function switchToWords() {
+  mode = "words";
+  renderWords();       // покажем skeleton
+  requestWords();
+}
+
+function switchToAbc() {
+  mode = "abc";
+  renderAbc();
+}
+
+/* ==================== Отправка сообщения ==================== */
+
+function sendMessage() {
+  const text = getText().trim();
+  if (!text) return;
+
+  // Добавляем "пузырёк" в ленту
+  const msg = document.createElement("div");
+  msg.className = "msg";
+  msg.textContent = text;
+  messagesEl.appendChild(msg);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+
+  // Сброс
+  setText("");
+  switchToAbc();
+}
+
+/* ==================== Запрос к DeepSeek (с debounce) ==================== */
+
+function requestWords() {
+  if (mode !== "words") return;
+  isLoading = true;
+  renderWords();                 // skeleton
+  clearTimeout(debounceTimer);
+  // Debounce, чтобы не спамить API при быстрых кликах
+  debounceTimer = setTimeout(fetchWords, 350);
+}
+
+/* Системный промпт: ТЕПЕРЬ явно просим включать знаки препинания
+   как отдельные элементы массива там, где это уместно. */
+const SYSTEM_PROMPT =
+`Ты — движок предиктивного ввода для мобильной клавиатуры.
+Тебе дают начало сообщения на русском языке.
+Верни СТРОГО валидный JSON-массив из 12 наиболее вероятных СЛЕДУЮЩИХ токенов,
+отсортированных по убыванию вероятности.
+
+Что такое токен:
+- это либо одно слово на русском языке,
+- либо ОДИН знак препинания как отдельный элемент массива.
+
+Правила:
+- обязательно включай уместные знаки препинания как отдельные элементы,
+  например: "," "." "!" "?" "…" ":" "—" — если по смыслу фраза может так продолжиться;
+- знаки препинания ставь на те позиции в массиве, которые соответствуют их вероятности
+  (если знак вероятнее слова — он должен быть выше);
+- слова — по одному слову, без знаков препинания внутри слова;
+- без повторов;
+- токены должны грамматически/пунктуационно продолжать фразу;
+- только массив строк, без пояснений, без markdown, без тройных кавычек.
+
+Пример ответа: ["привет",",","как","что",".","спасибо","!","хочу","давай","можно","?","сегодня"]`;
+
+async function fetchWords() {
+  const requestId = ++lastRequestId;      // метка актуальности
+  const context = getText();
+
+  // Нет ключа — сразу fallback
+  if (!DEEPSEEK_API_KEY) {
+    finishWords(FALLBACK_WORDS, requestId);
+    showToast("API-ключ не задан — показаны запасные слова");
+    return;
+  }
+
+  try {
+    const resp = await fetch(DEEPSEEK_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + DEEPSEEK_API_KEY
       },
       body: JSON.stringify({
-        model:"deepseek-chat",
-        messages:[{role:"user",content:prompt}],
-        temperature:0.7,
-        max_tokens:200
+        model: "deepseek-chat",
+        temperature: 0.3,
+        max_tokens: 200,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: "Текст: «" + context + "». Дай 12 следующих токенов (слова и знаки препинания)." }
+        ]
       })
     });
-    const data = await res.json();
-    let content = data.choices[0].message.content.trim();
-    // вытащить JSON
-    content = content.replace(/```json/gi,"").replace(/```/g,"").trim();
-    const m = content.match(/\[[\s\S]*\]/);
-    if(m) content = m[0];
-    let words = JSON.parse(content);
-    words = words.filter(w=>typeof w==="string").slice(0,12);
-    currentWords = words;
-  }catch(e){
-    console.error(e);
-    currentWords = ["и","в","не","на","что","это","как","я","ты","мы","да","нет"];
+
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+
+    const data = await resp.json();
+    const raw = data?.choices?.[0]?.message?.content ?? "";
+    const words = parseWords(raw);
+
+    if (words.length === 0) throw new Error("empty/garbage");
+
+    finishWords(words, requestId);
+
+  } catch (err) {
+    console.warn("DeepSeek error:", err);
+    finishWords(FALLBACK_WORDS, requestId);
+    showToast("Не удалось получить слова — показаны запасные");
   }
-  loadingWords=false;
-  document.getElementById("loader").style.visibility="hidden";
-  render();
 }
 
-updateInput();
+// Завершаем загрузку и рисуем слова, если ответ ещё актуален
+function finishWords(words, requestId) {
+  if (requestId !== lastRequestId) return; // пришёл устаревший ответ — игнор
+  isLoading = false;
+  if (mode === "words") renderWords(words);
+}
+
+/* Безопасный парсинг ответа модели.
+   ВАЖНО: знаки препинания больше НЕ вырезаются — они являются
+   валидными токенами и сохраняются как отдельные элементы. */
+function parseWords(raw) {
+  if (!raw) return [];
+  let text = raw.trim();
+  // Убираем возможные ```json ... ```
+  text = text.replace(/```json/gi, "").replace(/```/g, "").trim();
+  // Пытаемся выдернуть массив из текста
+  const start = text.indexOf("[");
+  const end = text.lastIndexOf("]");
+  if (start !== -1 && end !== -1 && end > start) {
+    text = text.slice(start, end + 1);
+  }
+  try {
+    const arr = JSON.parse(text);
+    if (!Array.isArray(arr)) return [];
+
+    const seen = new Set();
+    const out = [];
+    for (let w of arr) {
+      if (typeof w !== "string") continue;
+      w = w.trim();
+      if (!w) continue;
+
+      // Если это чистый знак препинания — оставляем как есть
+      if (isPunct(w)) {
+        const key = w;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(w);
+        if (out.length >= 12) break;
+        continue;
+      }
+
+      // Иначе это слово: убираем случайно прилипшую пунктуацию по краям,
+      // но НЕ трогаем внутренние дефисы (напр. "кто-то", "из-за").
+      w = w.replace(/^[.,!?;:"'«»()…]+/, "")
+           .replace(/[.,!?;:"'«»()…]+$/, "")
+           .trim();
+      if (!w) continue;
+
+      const key = w.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(w);
+      if (out.length >= 12) break;
+    }
+    return out;
+  } catch (e) {
+    return [];
+  }
+}
+
+/* ==================== Toast (сообщения об ошибках) ==================== */
+let toastTimer = null;
+function showToast(text) {
+  toastEl.textContent = text;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 3000);
+}
+
+/* ==================== Ручной ввод в поле (клавиатура ПК) ==================== */
+inputEl.addEventListener("input", updateSendBtn);
+inputEl.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); sendMessage(); }
+});
+sendBtn.onclick = sendMessage;
+
+/* ==================== Инициализация ==================== */
+renderKeyboard();
+updateSendBtn();
 </script>
 </body>
 </html>
