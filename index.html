@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -15,7 +14,7 @@
     --key-special: #1f2530;
     --accent: #4f8cff;
     --accent-2: #2f6fe0;
-    --punct: #3a2f4d;      /* фон для знаков препинания */
+    --punct: #3a2f4d;
     --punct-active: #6b4fa0;
     --text: #e8ebf0;
     --text-dim: #8a93a6;
@@ -35,7 +34,6 @@
     overscroll-behavior: none;
   }
 
-  /* Контейнер под мобильную ширину, работает и на десктопе */
   .app {
     max-width: 440px;
     margin: 0 auto;
@@ -97,7 +95,7 @@
     line-height: 1.4;
   }
 
-  /* ==================== Поле ввода (как в мессенджере) ==================== */
+  /* ==================== Поле ввода (свой курсор, без системной клавиатуры) ==================== */
   .inputbar {
     display: flex;
     align-items: flex-end;
@@ -116,16 +114,27 @@
     padding: 10px 16px;
     font-size: 16px;
     line-height: 1.35;
-    outline: none;
     border: 1px solid transparent;
     white-space: pre-wrap;
     word-break: break-word;
+    cursor: text;
   }
-  .input-field:focus { border-color: var(--accent); }
-  .input-field:empty:before {
-    content: attr(data-placeholder);
-    color: var(--text-dim);
+  /* блокируем выделение/контекстное меню, чтобы вело себя как поле ввода-дисплей */
+  .input-field { user-select: none; -webkit-user-select: none; }
+  .input-field.placeholder { color: var(--text-dim); }
+
+  /* Наш собственный мигающий курсор */
+  .caret {
+    display: inline-block;
+    width: 2px;
+    height: 1.15em;
+    background: var(--accent);
+    vertical-align: text-bottom;
+    margin-left: 1px;
+    animation: blink 1s steps(1) infinite;
   }
+  @keyframes blink { 50% { opacity: 0; } }
+
   .send-btn {
     flex-shrink: 0;
     width: 42px; height: 42px;
@@ -153,7 +162,6 @@
     user-select: none;
   }
 
-  /* Строка статуса режима */
   .kb-status {
     display: flex;
     align-items: center;
@@ -174,7 +182,6 @@
   }
   @keyframes spin { to { transform: rotate(360deg) } }
 
-  /* Ряды букв */
   .kb-row {
     display: flex;
     gap: 5px;
@@ -237,12 +244,10 @@
     white-space: nowrap;
   }
   .chip:active { background: var(--accent); color:#fff; transform: scale(.96); }
-  /* Отдельный стиль для чипов-знаков препинания */
   .chip.punct {
     background: var(--punct);
     font-size: 20px;
     font-weight: 600;
-    flex: 0;
   }
   .chip.punct:active { background: var(--punct-active); color:#fff; }
   .chip.skeleton {
@@ -254,7 +259,6 @@
   }
   @keyframes shimmer { to { background-position: -200% 0 } }
 
-  /* Нижний ряд служебных кнопок в режиме слов */
   .words-controls { display: flex; gap: 5px; height: 46px; }
 
   .toast {
@@ -289,9 +293,9 @@
     <div class="hint">Наберите первое слово по буквам и нажмите «Пробел» — дальше клавиатура предложит готовые слова и знаки препинания 🤖</div>
   </div>
 
-  <!-- Поле ввода -->
+  <!-- Поле ввода (НЕ contenteditable — системная клавиатура не появляется) -->
   <div class="inputbar">
-    <div class="input-field" id="input" contenteditable="true" data-placeholder="Сообщение..."></div>
+    <div class="input-field" id="input"></div>
     <button class="send-btn" id="sendBtn" title="Отправить">➤</button>
   </div>
 
@@ -301,7 +305,6 @@
       <span class="status-txt" id="statusTxt">Режим: буквы</span>
       <span id="statusRight"></span>
     </div>
-    <!-- Сюда динамически вставляется контент -->
     <div id="kbBody" style="flex:1;display:flex;flex-direction:column;gap:6px;overflow:hidden;"></div>
   </div>
 
@@ -310,11 +313,13 @@
 
 <script>
 /* ============================================================
-   AI-FIRST KEYBOARD — прототип (с поддержкой пунктуации)
+   AI-FIRST KEYBOARD — прототип
+   Поле ввода без системной клавиатуры: текст хранится в JS,
+   курсор рисуется вручную.
    ============================================================ */
 
 /* ⬇️⬇️⬇️ ВСТАВЬТЕ СЮДА ВАШ КЛЮЧ DeepSeek ⬇️⬇️⬇️ */
-const DEEPSEEK_API_KEY = "sk-5e015ac8a9a6473da729035363b622fc"; // например "sk-xxxxxxxxxxxxxxxx"
+const DEEPSEEK_API_KEY = ""; // например "sk-xxxxxxxxxxxxxxxx"
 /* ⬆️⬆️⬆️ ------------------------------------- ⬆️⬆️⬆️ */
 
 const DEEPSEEK_ENDPOINT = "https://api.deepseek.com/chat/completions";
@@ -326,26 +331,25 @@ const LAYOUT = [
   ["я","ч","с","м","и","т","ь","б","ю"]
 ];
 
-/* Fallback-набор — теперь включает и слова, и знаки препинания */
+/* Fallback-набор — слова и знаки препинания */
 const FALLBACK_WORDS = [
   "и","в","не",",","что","как",".","это","!","с","?","очень"
 ];
 
-/* Набор допустимых «пунктуационных токенов».
-   Используется и для распознавания, и для правил вставки. */
+/* Пунктуационные токены */
 const PUNCTUATION = new Set([
   ",", ".", "!", "?", "…", "...", ":", ";", "—", "-", ")", "(",
   "?!", "!?", "»", "«"
 ]);
-
-// Знаки, которые «прилипают» к предыдущему слову (без пробела перед ними)
 const ATTACH_LEFT = new Set([",", ".", "!", "?", "…", "...", ":", ";", "?!", "!?", ")", "»"]);
 
 /* ==================== Состояние ==================== */
+let text = "";             // ← ВЕСЬ введённый текст хранится здесь
 let mode = "abc";          // "abc" | "words"
-let isLoading = false;     // идёт ли запрос
-let debounceTimer = null;  // таймер debounce
-let lastRequestId = 0;     // для отмены устаревших ответов
+let isLoading = false;
+let debounceTimer = null;
+let lastRequestId = 0;
+const PLACEHOLDER = "Сообщение...";
 
 /* ==================== DOM ==================== */
 const inputEl   = document.getElementById("input");
@@ -356,56 +360,55 @@ const messagesEl = document.getElementById("messages");
 const sendBtn   = document.getElementById("sendBtn");
 const toastEl   = document.getElementById("toast");
 
-/* ==================== Утилиты работы с текстом ==================== */
+/* ==================== Работа с текстом и отрисовка поля ==================== */
 
-// Проверка: является ли токен знаком препинания
-function isPunct(token) {
-  return PUNCTUATION.has(token);
-}
+function isPunct(token) { return PUNCTUATION.has(token); }
 
-// Возвращает текущий текст input
-function getText() {
-  return inputEl.textContent || "";
-}
+function getText() { return text; }
 
-// Устанавливает текст и ставит курсор в конец
-function setText(txt) {
-  inputEl.textContent = txt;
-  placeCaretAtEnd(inputEl);
+// Меняем текст и перерисовываем поле
+function setText(newText) {
+  text = newText;
+  renderInput();
   updateSendBtn();
 }
 
-// Ставим курсор в конец contenteditable
-function placeCaretAtEnd(el) {
-  el.focus();
-  const range = document.createRange();
-  range.selectNodeContents(el);
-  range.collapse(false);
-  const sel = window.getSelection();
-  sel.removeAllRanges();
-  sel.addRange(range);
+// Экранирование HTML (текст пользователя вставляем безопасно)
+function escapeHtml(s) {
+  return s.replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
 }
 
-// Активна ли кнопка отправки
+// Рисуем содержимое поля + собственный мигающий курсор
+function renderInput() {
+  if (text.length === 0) {
+    inputEl.classList.add("placeholder");
+    inputEl.innerHTML = escapeHtml(PLACEHOLDER) + '<span class="caret"></span>';
+  } else {
+    inputEl.classList.remove("placeholder");
+    inputEl.innerHTML = escapeHtml(text) + '<span class="caret"></span>';
+  }
+  // прокрутка поля к концу, если текст длинный
+  inputEl.scrollTop = inputEl.scrollHeight;
+}
+
 function updateSendBtn() {
-  sendBtn.disabled = getText().trim().length === 0;
+  sendBtn.disabled = text.trim().length === 0;
 }
 
 /* ==================== Рендер клавиатуры ==================== */
 
-// Главный роутер отрисовки
 function renderKeyboard() {
   if (mode === "abc") renderAbc();
   else renderWords();
 }
 
-// --- Режим букв (QWERTY) ---
 function renderAbc() {
   statusTxt.textContent = "Режим: буквы";
   statusRight.innerHTML = "";
   kbBody.innerHTML = "";
 
-  // Буквенные ряды
   LAYOUT.forEach(row => {
     const rowEl = document.createElement("div");
     rowEl.className = "kb-row";
@@ -419,7 +422,6 @@ function renderAbc() {
     kbBody.appendChild(rowEl);
   });
 
-  // Нижний служебный ряд
   const ctrl = document.createElement("div");
   ctrl.className = "kb-row";
   ctrl.appendChild(makeKey("Слова", "key special", switchToWords));
@@ -429,7 +431,6 @@ function renderAbc() {
   kbBody.appendChild(ctrl);
 }
 
-// --- Режим слов ---
 function renderWords(words) {
   statusTxt.innerHTML = isLoading
     ? '<span class="spinner"></span> LLM подбирает слова...'
@@ -443,7 +444,6 @@ function renderWords(words) {
   grid.className = "words-grid";
 
   if (isLoading || !words) {
-    // Skeleton-заглушки
     for (let i = 0; i < 12; i++) {
       const s = document.createElement("div");
       s.className = "chip skeleton";
@@ -451,10 +451,8 @@ function renderWords(words) {
       grid.appendChild(s);
     }
   } else {
-    // Реальные кандидаты (максимум 12, обрезаем длинные)
     words.slice(0, 12).forEach(w => {
       const chip = document.createElement("button");
-      // Помечаем знаки препинания отдельным классом .punct
       const punct = isPunct(w);
       chip.className = punct ? "chip punct" : "chip";
       const shown = w.length > 14 ? w.slice(0, 13) + "…" : w;
@@ -466,7 +464,6 @@ function renderWords(words) {
   }
   wrap.appendChild(grid);
 
-  // Служебные кнопки внизу
   const ctrl = document.createElement("div");
   ctrl.className = "words-controls";
   ctrl.appendChild(makeKey("ABC", "key special", switchToAbc));
@@ -478,7 +475,6 @@ function renderWords(words) {
   kbBody.appendChild(wrap);
 }
 
-// Хелпер создания кнопки
 function makeKey(label, cls, handler) {
   const b = document.createElement("button");
   b.className = cls;
@@ -494,16 +490,13 @@ function onLetter(ch) {
 }
 
 function onBackspace() {
-  const t = getText();
-  setText(t.slice(0, -1));
-  // Если стёрли всё в режиме слов — обновим предсказания
+  setText(getText().slice(0, -1));
   if (mode === "words") requestWords();
 }
 
-// Пробел — ключевое действие: переключает в режим слов
 function onSpace() {
   const t = getText();
-  if (t.length === 0 || t.endsWith(" ")) return; // не плодим пробелы
+  if (t.length === 0 || t.endsWith(" ")) return;
   setText(t + " ");
   switchToWords();
 }
@@ -512,34 +505,23 @@ function onEnter() {
   sendMessage();
 }
 
-/* Клик по предложенному токену (слову ИЛИ знаку препинания).
-   Логика вставки:
-   - знак препинания, «прилипающий влево» (, . ! ? …) — приклеиваем
-     к предыдущему слову без пробела, затем ставим пробел;
-   - открывающая скобка/кавычка «(» «»« — ставим с пробелом перед,
-     но без пробела после (упрощённо оставляем пробел);
-   - обычное слово — добавляем с пробелом-разделителем. */
 function onWord(token) {
   let t = getText();
-
   if (isPunct(token) && ATTACH_LEFT.has(token)) {
-    // Убираем висящий пробел перед знаком, если он есть
     t = t.replace(/\s+$/, "");
     setText(t + token + " ");
   } else {
-    // Обычное слово или "открывающий" знак — с пробелом-разделителем
     const base = (t.endsWith(" ") || t.length === 0) ? t : t + " ";
     setText(base + token + " ");
   }
-
-  requestWords(); // сразу просим следующий набор
+  requestWords();
 }
 
 /* ==================== Переключение режимов ==================== */
 
 function switchToWords() {
   mode = "words";
-  renderWords();       // покажем skeleton
+  renderWords();
   requestWords();
 }
 
@@ -551,17 +533,15 @@ function switchToAbc() {
 /* ==================== Отправка сообщения ==================== */
 
 function sendMessage() {
-  const text = getText().trim();
-  if (!text) return;
+  const t = getText().trim();
+  if (!t) return;
 
-  // Добавляем "пузырёк" в ленту
   const msg = document.createElement("div");
   msg.className = "msg";
-  msg.textContent = text;
+  msg.textContent = t;
   messagesEl.appendChild(msg);
   messagesEl.scrollTop = messagesEl.scrollHeight;
 
-  // Сброс
   setText("");
   switchToAbc();
 }
@@ -571,14 +551,11 @@ function sendMessage() {
 function requestWords() {
   if (mode !== "words") return;
   isLoading = true;
-  renderWords();                 // skeleton
+  renderWords();
   clearTimeout(debounceTimer);
-  // Debounce, чтобы не спамить API при быстрых кликах
   debounceTimer = setTimeout(fetchWords, 350);
 }
 
-/* Системный промпт: ТЕПЕРЬ явно просим включать знаки препинания
-   как отдельные элементы массива там, где это уместно. */
 const SYSTEM_PROMPT =
 `Ты — движок предиктивного ввода для мобильной клавиатуры.
 Тебе дают начало сообщения на русском языке.
@@ -592,8 +569,7 @@ const SYSTEM_PROMPT =
 Правила:
 - обязательно включай уместные знаки препинания как отдельные элементы,
   например: "," "." "!" "?" "…" ":" "—" — если по смыслу фраза может так продолжиться;
-- знаки препинания ставь на те позиции в массиве, которые соответствуют их вероятности
-  (если знак вероятнее слова — он должен быть выше);
+- знаки препинания ставь на позиции, соответствующие их вероятности;
 - слова — по одному слову, без знаков препинания внутри слова;
 - без повторов;
 - токены должны грамматически/пунктуационно продолжать фразу;
@@ -602,10 +578,9 @@ const SYSTEM_PROMPT =
 Пример ответа: ["привет",",","как","что",".","спасибо","!","хочу","давай","можно","?","сегодня"]`;
 
 async function fetchWords() {
-  const requestId = ++lastRequestId;      // метка актуальности
+  const requestId = ++lastRequestId;
   const context = getText();
 
-  // Нет ключа — сразу fallback
   if (!DEEPSEEK_API_KEY) {
     finishWords(FALLBACK_WORDS, requestId);
     showToast("API-ключ не задан — показаны запасные слова");
@@ -647,29 +622,23 @@ async function fetchWords() {
   }
 }
 
-// Завершаем загрузку и рисуем слова, если ответ ещё актуален
 function finishWords(words, requestId) {
-  if (requestId !== lastRequestId) return; // пришёл устаревший ответ — игнор
+  if (requestId !== lastRequestId) return;
   isLoading = false;
   if (mode === "words") renderWords(words);
 }
 
-/* Безопасный парсинг ответа модели.
-   ВАЖНО: знаки препинания больше НЕ вырезаются — они являются
-   валидными токенами и сохраняются как отдельные элементы. */
 function parseWords(raw) {
   if (!raw) return [];
-  let text = raw.trim();
-  // Убираем возможные ```json ... ```
-  text = text.replace(/```json/gi, "").replace(/```/g, "").trim();
-  // Пытаемся выдернуть массив из текста
-  const start = text.indexOf("[");
-  const end = text.lastIndexOf("]");
+  let str = raw.trim();
+  str = str.replace(/```json/gi, "").replace(/```/g, "").trim();
+  const start = str.indexOf("[");
+  const end = str.lastIndexOf("]");
   if (start !== -1 && end !== -1 && end > start) {
-    text = text.slice(start, end + 1);
+    str = str.slice(start, end + 1);
   }
   try {
-    const arr = JSON.parse(text);
+    const arr = JSON.parse(str);
     if (!Array.isArray(arr)) return [];
 
     const seen = new Set();
@@ -679,18 +648,14 @@ function parseWords(raw) {
       w = w.trim();
       if (!w) continue;
 
-      // Если это чистый знак препинания — оставляем как есть
       if (isPunct(w)) {
-        const key = w;
-        if (seen.has(key)) continue;
-        seen.add(key);
+        if (seen.has(w)) continue;
+        seen.add(w);
         out.push(w);
         if (out.length >= 12) break;
         continue;
       }
 
-      // Иначе это слово: убираем случайно прилипшую пунктуацию по краям,
-      // но НЕ трогаем внутренние дефисы (напр. "кто-то", "из-за").
       w = w.replace(/^[.,!?;:"'«»()…]+/, "")
            .replace(/[.,!?;:"'«»()…]+$/, "")
            .trim();
@@ -708,23 +673,35 @@ function parseWords(raw) {
   }
 }
 
-/* ==================== Toast (сообщения об ошибках) ==================== */
+/* ==================== Toast ==================== */
 let toastTimer = null;
-function showToast(text) {
-  toastEl.textContent = text;
+function showToast(txt) {
+  toastEl.textContent = txt;
   toastEl.classList.add("show");
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => toastEl.classList.remove("show"), 3000);
 }
 
-/* ==================== Ручной ввод в поле (клавиатура ПК) ==================== */
-inputEl.addEventListener("input", updateSendBtn);
-inputEl.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") { e.preventDefault(); sendMessage(); }
+/* ==================== Физическая клавиатура (только десктоп) ==================== */
+// На телефоне системная клавиатура не появляется, поэтому это не мешает.
+// На ПК позволяет печатать «вживую» для удобства тестирования.
+window.addEventListener("keydown", (e) => {
+  // игнорируем сочетания с Ctrl/Alt/Meta
+  if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+  if (e.key === "Enter") { e.preventDefault(); sendMessage(); return; }
+  if (e.key === "Backspace") { e.preventDefault(); onBackspace(); return; }
+  if (e.key === " ") { e.preventDefault(); onSpace(); return; }
+
+  // одиночный печатаемый символ
+  if (e.key.length === 1) {
+    e.preventDefault();
+    setText(getText() + e.key);
+  }
 });
-sendBtn.onclick = sendMessage;
 
 /* ==================== Инициализация ==================== */
+renderInput();
 renderKeyboard();
 updateSendBtn();
 </script>
